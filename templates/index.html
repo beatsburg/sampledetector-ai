@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SampleGuard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>🎵 SampleGuard</h1>
+    <form action="/analyze" enctype="multipart/form-data" method="post">
+        <input type="file" name="file" accept=".mp3,.wav" required>
+        <button type="submit">Lae üles ja analüüsi</button>
+    </form>
+
+    {% if filename %}
+    <p>✅ Fail "{{ filename }}" salvestatud!</p>
+    {% endif %}
+    {% if message %}
+    <p><strong>{{ message }}</strong></p>
+    {% endif %}
+</body>
+</html>
