@@ -5,17 +5,24 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>🎵 SampleGuard</h1>
+    <h1>🎵 SampleGuard v0.8</h1>
     <form action="/analyze" enctype="multipart/form-data" method="post">
         <input type="file" name="file" accept=".mp3,.wav" required>
         <button type="submit">Lae üles ja analüüsi</button>
     </form>
 
     {% if filename %}
-    <p>✅ Fail "{{ filename }}" salvestatud!</p>
+    <h2>Tulemus failile: {{ filename }}</h2>
+    <p>⏱️ Kestus: {{ duration }} sekundit</p>
+    <p>💓 BPM: {{ tempo }}</p>
+    <p>📄 <a href="{{ pdf_report }}" target="_blank">Lae alla PDF aruanne</a></p>
+    <p>📊 <a href="{{ json_file }}" target="_blank">Vaata JSON</a></p>
+    <p><img src="{{ waveform_image }}" width="600"></p>
     {% endif %}
-    {% if message %}
-    <p><strong>{{ message }}</strong></p>
+
+    {% if audd_result %}
+    <h3>🎧 AudD tulemus:</h3>
+    <pre>{{ audd_result | tojson(indent=2) }}</pre>
     {% endif %}
 </body>
 </html>
