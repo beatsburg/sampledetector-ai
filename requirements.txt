@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+jinja2
+aiofiles
+python-multipart
+pydub
+numpy
+scipy
+matplotlib
+reportlab
+librosa
+soundfile
+aiohttp
