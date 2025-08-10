@@ -2,7 +2,7 @@
 <html lang="et">
 <head>
   <meta charset="utf-8">
-  <title>SampleDetector AI (minimal)</title>
+  <title>SampleDetector AI (v1.1)</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -20,11 +20,34 @@
     <li>⚡ Töötlemise aeg: <b>{{ time_total }}</b> s</li>
     <li>📄 <a href="{{ json_file }}" target="_blank">Vaata JSON</a></li>
   </ul>
+
+  {% if audd_summary %}
+    <h3>🎧 AudD – tuvastatud lugu</h3>
+    <div style="display:flex; gap:16px; align-items:flex-start;">
+      {% if audd_cover %}
+        <img src="{{ audd_cover | replace('{w}x{h}', '300x300') }}" alt="cover" width="150" height="150" style="border:1px solid #ddd;">
+      {% endif %}
+      <div>
+        <div><b>{{ audd_summary.title }}</b> — {{ audd_summary.artist }}</div>
+        {% if audd_summary.album %}<div>Album: {{ audd_summary.album }}</div>{% endif %}
+        {% if audd_summary.timecode %}<div>Timecode: {{ audd_summary.timecode }}</div>{% endif %}
+        {% if audd_summary.release_date %}<div>Release: {{ audd_summary.release_date }}</div>{% endif %}
+        {% if audd_summary.label %}<div>Label: {{ audd_summary.label }}</div>{% endif %}
+        <div style="margin-top:6px;">
+          {% if spotify_url %}<a href="{{ spotify_url }}" target="_blank">Spotify</a>{% endif %}
+          {% if apple_url %} &nbsp;|&nbsp; <a href="{{ apple_url }}" target="_blank">Apple Music</a>{% endif %}
+          {% if audd_summary.song_link %} &nbsp;|&nbsp; <a href="{{ audd_summary.song_link }}" target="_blank">Song link</a>{% endif %}
+        </div>
+      </div>
+    </div>
   {% endif %}
 
+  <h3>🎧 AudD tulemus (toores JSON)</h3>
   {% if audd_result %}
-  <h3>🎧 AudD tulemus</h3>
-  <pre>{{ audd_result | tojson(indent=2) }}</pre>
+    <pre>{{ audd_result | tojson(indent=2) }}</pre>
+  {% else %}
+    <p>AudD token lisamata või tulemust ei leitud.</p>
+  {% endif %}
   {% endif %}
 </body>
 </html>
