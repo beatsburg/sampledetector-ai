@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="utf-8">
+  <title>SampleDetector AI (minimal)</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>🎵 SampleDetector AI</h1>
+  <form action="/analyze" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".mp3,.wav,.m4a,.aiff,.aif,.ogg" required>
+    <button type="submit">Lae üles ja analüüsi</button>
+  </form>
+
+  {% if filename %}
+  <h2>Tulemus: {{ filename }}</h2>
+  <ul>
+    <li>⏱️ Kestus: <b>{{ duration }}</b> s</li>
+    <li>🔊 Valjus (dBFS): <b>{{ loudness }}</b></li>
+    <li>⚡ Töötlemise aeg: <b>{{ time_total }}</b> s</li>
+    <li>📄 <a href="{{ json_file }}" target="_blank">Vaata JSON</a></li>
+  </ul>
+  {% endif %}
+
+  {% if audd_result %}
+  <h3>🎧 AudD tulemus</h3>
+  <pre>{{ audd_result | tojson(indent=2) }}</pre>
+  {% endif %}
+</body>
+</html>
