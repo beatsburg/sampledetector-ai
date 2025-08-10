@@ -1,1 +1,1 @@
-# SampleDetector v1.0.2 – resampling fix (RES_TYPE=scipy) + resampy in requirements
+# SampleDetector v1.0.3 – pinned deps + robust error surfacing
