@@ -1,4 +1,4 @@
-import os, time, json
+import os, io, time, json, tempfile
 import numpy as np
 import soundfile as sf
 import librosa, librosa.display
@@ -11,8 +11,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from reportlab.pdfgen import canvas
 from datetime import datetime
-import aiohttp
-from aiohttp import ClientTimeout
+
+# FFmpeg-less fallback using imageio-ffmpeg + pydub
+from pydub import AudioSegment
+import imageio_ffmpeg
+
+# Configure pydub to use bundled ffmpeg binary from imageio-ffmpeg
+AudioSegment.converter = imageio_ffmpeg.get_ffmpeg_exe()
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -21,8 +26,6 @@ MAX_FILE_SIZE_MB = 20
 MAX_ANALYZE_SECONDS = 90.0
 TARGET_SR = 22050
 RES_TYPE = "kaiser_fast"
-
-AUDD_API_TOKEN = os.getenv("AUDD_API_TOKEN")
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -43,6 +46,37 @@ def _save_waveform_png(y, sr, out_path):
     plt.savefig(out_path, dpi=120)
     plt.close('all')
 
+def _safe_load_audio(file_bytes: bytes, filename: str):
+    # Try fast path with librosa+soundfile (works for WAV/OGG/FLAC)
+    ext = os.path.splitext(filename.lower())[1]
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(file_bytes)
+        tmp_path = tmp.name
+    try:
+        # For WAV/OGG etc this is efficient
+        y, sr = librosa.load(tmp_path, sr=TARGET_SR, mono=True, duration=MAX_ANALYZE_SECONDS, res_type=RES_TYPE)
+        return y, sr
+    except Exception:
+        # Fallback: decode with pydub (uses imageio-ffmpeg binary) then hand to librosa
+        try:
+            audio = AudioSegment.from_file(tmp_path)
+            # Truncate to MAX_ANALYZE_SECONDS to reduce RAM
+            if len(audio) > MAX_ANALYZE_SECONDS * 1000:
+                audio = audio[:int(MAX_ANALYZE_SECONDS * 1000)]
+            # Export to WAV bytes in-memory
+            buf = io.BytesIO()
+            audio.export(buf, format="wav")
+            buf.seek(0)
+            y, sr = librosa.load(buf, sr=TARGET_SR, mono=True, res_type=RES_TYPE)
+            return y, sr
+        except Exception as e:
+            raise HTTPException(status_code=415, detail=f"Audio decode failed. Try WAV/OGG või teistsugune MP3/M4A. ({e})")
+    finally:
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -56,24 +90,29 @@ async def analyze_audio(request: Request, file: UploadFile = File(...)):
     raw = await file.read()
     size_mb = len(raw) / (1024 * 1024)
     if size_mb > MAX_FILE_SIZE_MB:
-        raise HTTPException(status_code=400, detail=f"Fail on {size_mb:.1f} MB; limiit {MAX_FILE_SIZE_MB} MB. Proovi lühemat või tihendatud MP3/WAV-i.")
+        raise HTTPException(status_code=400, detail=f"Fail on {size_mb:.1f} MB; limiit {MAX_FILE_SIZE_MB} MB.")
 
+    # Persist original upload
     with open(file_path, "wb") as f:
         f.write(raw)
     t_saved = time.perf_counter()
 
-    y, sr = librosa.load(file_path, sr=TARGET_SR, mono=True, duration=MAX_ANALYZE_SECONDS, res_type=RES_TYPE)
+    # Decode with safe loader (no system ffmpeg required)
+    y, sr = _safe_load_audio(raw, filename)
     duration = librosa.get_duration(y=y, sr=sr)
     t_loaded = time.perf_counter()
 
+    # Tempo
     onset_env = librosa.onset.onset_strength(y=y, sr=sr)
     tempo = float(librosa.beat.tempo(onset_envelope=onset_env, sr=sr, aggregate='median'))
     t_tempo = time.perf_counter()
 
+    # Waveform
     waveform_path = os.path.join(UPLOAD_FOLDER, f"{filename}_waveform.png")
     _save_waveform_png(y, sr, waveform_path)
     t_wave = time.perf_counter()
 
+    # PDF
     pdf_path = os.path.join(UPLOAD_FOLDER, f"{filename}_report.pdf")
     c = canvas.Canvas(pdf_path)
     c.setFont("Helvetica", 14); c.drawString(50, 800, "SampleDetector Report")
@@ -89,21 +128,6 @@ async def analyze_audio(request: Request, file: UploadFile = File(...)):
     c.save()
     t_pdf = time.perf_counter()
 
-    audd_result = None
-    if AUDD_API_TOKEN:
-        try:
-            timeout = ClientTimeout(total=15)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                form = aiohttp.FormData()
-                form.add_field("api_token", AUDD_API_TOKEN)
-                form.add_field("return", "timecode,apple_music,spotify")
-                form.add_field("file", open(file_path, "rb"), filename=filename)
-                async with session.post("https://api.audd.io/", data=form) as resp:
-                    audd_result = await resp.json()
-        except Exception as e:
-            audd_result = {"error": str(e)}
-    t_audd = time.perf_counter()
-
     json_data = {
         "filename": filename,
         "filesize_mb": round(size_mb, 2),
@@ -115,14 +139,14 @@ async def analyze_audio(request: Request, file: UploadFile = File(...)):
             "tempo": round(t_tempo - t_loaded, 3),
             "waveform": round(t_wave - t_tempo, 3),
             "pdf": round(t_pdf - t_wave, 3),
-            "audd": round(t_audd - t_pdf, 3),
-            "total": round(t_audd - t0, 3)
+            "total": round(t_pdf - t0, 3)
         }
     }
     json_path = os.path.join(UPLOAD_FOLDER, f"{filename}_analysis.json")
     with open(json_path, "w") as f:
         json.dump(json_data, f, indent=2)
 
+    # cleanup
     del y, onset_env
     plt.close('all')
 
@@ -134,9 +158,12 @@ async def analyze_audio(request: Request, file: UploadFile = File(...)):
         "pdf_report": f"/uploads/{os.path.basename(pdf_path)}",
         "waveform_image": f"/uploads/{os.path.basename(waveform_path)}",
         "json_file": f"/uploads/{os.path.basename(json_path)}",
-        "audd_result": audd_result,
         "timing": json_data["timing_sec"]
     })
+
+@app.get("/health")
+async def health():
+    return {"ok": True}
 
 @app.get("/uploads/{filename}")
 async def get_file(filename: str):

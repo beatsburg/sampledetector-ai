@@ -9,4 +9,5 @@ matplotlib
 reportlab
 librosa
 soundfile
-aiohttp
+pydub
+imageio-ffmpeg
