@@ -1,1 +1,1 @@
-# SampleGuard v0.9 – Optimeeritud väikese mälukasutuse jaoks
+# SampleDetector v1.0 – performance optimized
