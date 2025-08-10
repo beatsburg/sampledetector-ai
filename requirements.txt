@@ -11,3 +11,4 @@ librosa
 soundfile
 pydub
 imageio-ffmpeg
+resampy
