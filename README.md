@@ -1,6 +1,7 @@
-# sampledetector-ai v1.1 (AudD clip + nicer UI)
+# sampledetector-ai v1.2 (clip slider + caching + CSV + rate-limit)
 
-- Sends only 15s clip to AudD (fast, cheap)
-- Shows title/artist/album art + Spotify/Apple links
-- Python: 3.11.9 (runtime.txt)
-- Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- 15s clip to AudD; UI slider to choose start (0–60s)
+- Caching by audio hash + start point
+- Results table + /results.csv download
+- Simple rate limit 10 req/IP/hour
+- Python: 3.11.9 via runtime.txt

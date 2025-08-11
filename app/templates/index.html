@@ -2,24 +2,30 @@
 <html lang="et">
 <head>
   <meta charset="utf-8">
-  <title>SampleDetector AI (v1.1)</title>
+  <title>SampleDetector AI (v1.2)</title>
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    table{border-collapse:collapse;width:100%;margin-top:16px}
+    th,td{border:1px solid #ddd;padding:8px;text-align:left}
+    th{background:#f3f3f3}
+    .meta{color:#666;font-size:12px}
+    .ok{color:#0a7a00}.warn{color:#b36b00}.err{color:#b00020}
+  </style>
 </head>
 <body>
   <h1>🎵 SampleDetector AI</h1>
   <form action="/analyze" method="post" enctype="multipart/form-data">
     <input type="file" name="file" accept=".mp3,.wav,.m4a,.aiff,.aif,.ogg" required>
+    <label style="margin-left:12px;">Alguspunkt (sek): 
+      <input type="range" name="start_seconds" id="start_seconds" min="0" max="60" step="1" value="{{ start_seconds or 30 }}" oninput="ssv.innerText=this.value">
+      <b id="ssv">{{ start_seconds or 30 }}</b>s
+    </label>
     <button type="submit">Lae üles ja analüüsi</button>
   </form>
 
   {% if filename %}
   <h2>Tulemus: {{ filename }}</h2>
-  <ul>
-    <li>⏱️ Kestus: <b>{{ duration }}</b> s</li>
-    <li>🔊 Valjus (dBFS): <b>{{ loudness }}</b></li>
-    <li>⚡ Töötlemise aeg: <b>{{ time_total }}</b> s</li>
-    <li>📄 <a href="{{ json_file }}" target="_blank">Vaata JSON</a></li>
-  </ul>
+  <div class="meta">⏱️ Kestus: <b>{{ duration }}</b> s &nbsp; · &nbsp; 🔊 Valjus: <b>{{ loudness }}</b> dBFS &nbsp; · &nbsp; ⚡ Aeg: <b>{{ time_total }}</b> s {% if cache_hit %} <span class="ok">(cache)</span>{% endif %}</div>
 
   {% if audd_summary %}
     <h3>🎧 AudD – tuvastatud lugu</h3>
@@ -40,6 +46,12 @@
         </div>
       </div>
     </div>
+  {% elif audd_result and audd_result.error %}
+    <p class="err">AudD viga: {{ audd_result.error }}</p>
+  {% elif audd_result and audd_result.warning %}
+    <p class="warn">{{ audd_result.warning }}</p>
+  {% else %}
+    <p class="warn">Tulemust ei leitud. Proovi teist lõiku või lülita alguspunkti liuguriga.</p>
   {% endif %}
 
   <h3>🎧 AudD tulemus (toores JSON)</h3>
@@ -49,5 +61,30 @@
     <p>AudD token lisamata või tulemust ei leitud.</p>
   {% endif %}
   {% endif %}
+
+  <h3>📈 Viimased analüüsid</h3>
+  {% if recent and recent|length > 0 %}
+  <table>
+    <tr>
+      <th>Aeg (UTC)</th><th>Fail</th><th>Lugu</th><th>Artist</th><th>Timecode</th><th>Spotify</th><th>Apple</th>
+    </tr>
+    {% for r in recent %}
+    <tr>
+      <td>{{ r.timestamp }}</td>
+      <td>{{ r.filename }}</td>
+      <td>{{ r.title }}</td>
+      <td>{{ r.artist }}</td>
+      <td>{{ r.timecode }}</td>
+      <td>{% if r.spotify_url %}<a href="{{ r.spotify_url }}" target="_blank">link</a>{% endif %}</td>
+      <td>{% if r.apple_url %}<a href="{{ r.apple_url }}" target="_blank">link</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p><a href="/results.csv" target="_blank">Laadi alla CSV</a></p>
+  {% else %}
+    <p>Veel pole tulemusi.</p>
+  {% endif %}
+
+  <p class="meta" style="margin-top:24px;">GDPR: üleslaaditud fail salvestatakse ajutiselt serverisse ainult töötlemise ajaks. Ülevaade (CSV) salvestab vaid metaandmeid (failinimi, lugu, lingid, aeg).</p>
 </body>
 </html>
