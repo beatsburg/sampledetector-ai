@@ -2,89 +2,39 @@
 <html lang="et">
 <head>
   <meta charset="utf-8">
-  <title>SampleDetector AI (v1.2)</title>
+  <title>SampleDetector v2.0-alpha</title>
   <link rel="stylesheet" href="/static/style.css">
   <style>
-    table{border-collapse:collapse;width:100%;margin-top:16px}
-    th,td{border:1px solid #ddd;padding:8px;text-align:left}
-    th{background:#f3f3f3}
-    .meta{color:#666;font-size:12px}
-    .ok{color:#0a7a00}.warn{color:#b36b00}.err{color:#b00020}
+    body{font-family:-apple-system,Arial,sans-serif;padding:2rem;background:#0b0b0c;color:#e5e7eb}
+    a{color:#93c5fd}
+    .card{background:#121214;border:1px solid #222;border-radius:12px;padding:16px;margin-bottom:16px}
+    input,button{color:#111}
   </style>
 </head>
 <body>
-  <h1>🎵 SampleDetector AI</h1>
-  <form action="/analyze" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" accept=".mp3,.wav,.m4a,.aiff,.aif,.ogg" required>
-    <label style="margin-left:12px;">Alguspunkt (sek): 
-      <input type="range" name="start_seconds" id="start_seconds" min="0" max="60" step="1" value="{{ start_seconds or 30 }}" oninput="ssv.innerText=this.value">
-      <b id="ssv">{{ start_seconds or 30 }}</b>s
-    </label>
-    <button type="submit">Lae üles ja analüüsi</button>
-  </form>
+  <h1>🔎 Sample Origin – v2.0 alpha</h1>
+  <div class="card">
+    <h3>1) Ehita referentsindeks (ZIP)</h3>
+    <form action="/index-samples" method="post" enctype="multipart/form-data" target="_blank">
+      <input type="file" name="zipfile_upload" accept=".zip" required>
+      <button type="submit">Laadi ZIP ja ehita indeks</button>
+    </form>
+    <p class="meta">ZIP: kuni {{ 200 }} faili; toetatud: mp3/wav/m4a/ogg/aiff/flac. Iga faili analüüs kuni 120 s.</p>
+  </div>
 
-  {% if filename %}
-  <h2>Tulemus: {{ filename }}</h2>
-  <div class="meta">⏱️ Kestus: <b>{{ duration }}</b> s &nbsp; · &nbsp; 🔊 Valjus: <b>{{ loudness }}</b> dBFS &nbsp; · &nbsp; ⚡ Aeg: <b>{{ time_total }}</b> s {% if cache_hit %} <span class="ok">(cache)</span>{% endif %}</div>
+  <div class="card">
+    <h3>2) Analüüsi lugu</h3>
+    <form action="/sample-origin" method="post" enctype="multipart/form-data">
+      <input type="file" name="track" accept=".mp3,.wav,.m4a,.ogg,.aiff,.flac" required>
+      <label style="margin-left:12px;">Alusta (sek): <input type="number" name="start_seconds" value="0" min="0" step="0.5"></label>
+      <button type="submit">Analüüsi</button>
+    </form>
+    <p class="meta">Analüüsib kuni 120 s. Kompensatsioon: ±4 pooltooni, tempo ±10%.</p>
+  </div>
 
-  {% if audd_summary %}
-    <h3>🎧 AudD – tuvastatud lugu</h3>
-    <div style="display:flex; gap:16px; align-items:flex-start;">
-      {% if audd_cover %}
-        <img src="{{ audd_cover | replace('{w}x{h}', '300x300') }}" alt="cover" width="150" height="150" style="border:1px solid #ddd;">
-      {% endif %}
-      <div>
-        <div><b>{{ audd_summary.title }}</b> — {{ audd_summary.artist }}</div>
-        {% if audd_summary.album %}<div>Album: {{ audd_summary.album }}</div>{% endif %}
-        {% if audd_summary.timecode %}<div>Timecode: {{ audd_summary.timecode }}</div>{% endif %}
-        {% if audd_summary.release_date %}<div>Release: {{ audd_summary.release_date }}</div>{% endif %}
-        {% if audd_summary.label %}<div>Label: {{ audd_summary.label }}</div>{% endif %}
-        <div style="margin-top:6px;">
-          {% if spotify_url %}<a href="{{ spotify_url }}" target="_blank">Spotify</a>{% endif %}
-          {% if apple_url %} &nbsp;|&nbsp; <a href="{{ apple_url }}" target="_blank">Apple Music</a>{% endif %}
-          {% if audd_summary.song_link %} &nbsp;|&nbsp; <a href="{{ audd_summary.song_link }}" target="_blank">Song link</a>{% endif %}
-        </div>
-      </div>
-    </div>
-  {% elif audd_result and audd_result.error %}
-    <p class="err">AudD viga: {{ audd_result.error }}</p>
-  {% elif audd_result and audd_result.warning %}
-    <p class="warn">{{ audd_result.warning }}</p>
-  {% else %}
-    <p class="warn">Tulemust ei leitud. Proovi teist lõiku või lülita alguspunkti liuguriga.</p>
-  {% endif %}
-
-  <h3>🎧 AudD tulemus (toores JSON)</h3>
-  {% if audd_result %}
-    <pre>{{ audd_result | tojson(indent=2) }}</pre>
-  {% else %}
-    <p>AudD token lisamata või tulemust ei leitud.</p>
-  {% endif %}
-  {% endif %}
-
-  <h3>📈 Viimased analüüsid</h3>
-  {% if recent and recent|length > 0 %}
-  <table>
-    <tr>
-      <th>Aeg (UTC)</th><th>Fail</th><th>Lugu</th><th>Artist</th><th>Timecode</th><th>Spotify</th><th>Apple</th>
-    </tr>
-    {% for r in recent %}
-    <tr>
-      <td>{{ r.timestamp }}</td>
-      <td>{{ r.filename }}</td>
-      <td>{{ r.title }}</td>
-      <td>{{ r.artist }}</td>
-      <td>{{ r.timecode }}</td>
-      <td>{% if r.spotify_url %}<a href="{{ r.spotify_url }}" target="_blank">link</a>{% endif %}</td>
-      <td>{% if r.apple_url %}<a href="{{ r.apple_url }}" target="_blank">link</a>{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table>
-  <p><a href="/results.csv" target="_blank">Laadi alla CSV</a></p>
-  {% else %}
-    <p>Veel pole tulemusi.</p>
-  {% endif %}
-
-  <p class="meta" style="margin-top:24px;">GDPR: üleslaaditud fail salvestatakse ajutiselt serverisse ainult töötlemise ajaks. Ülevaade (CSV) salvestab vaid metaandmeid (failinimi, lugu, lingid, aeg).</p>
+  <div class="card">
+    <h3>Indeksi staatus</h3>
+    <p><a href="/health" target="_blank">/health</a> · <a href="/index/meta" target="_blank">/index/meta</a> · <a href="/index/clear" target="_blank">/index/clear</a></p>
+  </div>
 </body>
 </html>
