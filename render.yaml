@@ -7,7 +7,5 @@ services:
     plan: free
     region: frankfurt
     envVars:
-      - key: AUDD_API_TOKEN
-        sync: false
       - key: ADMIN_TOKEN
         sync: false

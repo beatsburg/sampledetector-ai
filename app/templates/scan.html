@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="utf-8">
+  <title>Skänni tulemus · AutoCatalog</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body{font-family:-apple-system,Arial,sans-serif;padding:2rem;background:#0b0b0c;color:#e5e7eb}
+    a{color:#93c5fd}
+    table{border-collapse:collapse;width:100%;margin-top:12px}
+    th,td{border:1px solid #222;padding:8px;text-align:left}
+    th{background:#18181b;color:#ddd}
+    img{border-radius:8px}
+  </style>
+</head>
+<body>
+  <h1>Skänni tulemus</h1>
+  <p>Fail: <b>{{ res.filename }}</b> · Kataloogis: {{ res.catalog_tracks }} lugu · Päringu paare: {{ res.pairs_query }} · Matše: {{ res.matches }} · Lävi: {{ res.threshold }} · Aeg: {{ res.t_sec }}s</p>
+  {% if res.results and res.results|length %}
+  <table>
+    <tr><th>#</th><th>Cover</th><th>Lugu</th><th>Artist</th><th>Votes</th><th>Offset</th><th>Link</th><th>Preview</th></tr>
+    {% for r in res.results %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{% if r.artwork %}<img src="{{ r.artwork }}" width="60">{% endif %}</td>
+        <td>{{ r.track }}</td>
+        <td>{{ r.artist }}</td>
+        <td><b>{{ r.votes }}</b></td>
+        <td>{{ r.best_offset }}</td>
+        <td>{% if r.viewUrl %}<a href="{{ r.viewUrl }}" target="_blank">iTunes</a>{% endif %}</td>
+        <td>{% if r.preview %}<audio controls src="{{ r.preview }}"></audio>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>Vasteid ei leitud selle lävega. Proovi lisada kataloogi teisi otsinguid või langeta läve `MATCH_VOTE_THRESHOLD`.</p>
+  {% endif %}
+  <p style="margin-top:12px;"><a href="/">⬅︎ Tagasi</a></p>
+</body>
+</html>

@@ -1,11 +1,13 @@
-# SampleDetector v1.3.4 (stable)
+# SampleDetector v1.4.0 · AutoCatalog
 
-- Multi-file upload + results table
-- Per-file JSON saved to /uploads/*_analysis.json (+ link in UI)
-- /analyze.json endpoint (API)
-- Lightweight deps; Render Free friendly
+No reference uploads. Builds an index by downloading 30s preview clips from iTunes Search API for your queries.
 
-Deploy:
-1) Commit & Push
-2) Render → Manual Deploy → Clear build cache → Deploy latest commit
-3) Env: AUDD_API_TOKEN, ADMIN_TOKEN (optional), PYTHON_VERSION=3.11.9
+Endpoints:
+- POST /autocatalog  (form: queries="artist1, artist2", per_query=20)
+- POST /scan         (form-data: file=your_track)
+- POST /scan.json    (API)
+- GET  /catalog, /health
+
+Env knobs: CATALOG_MAX, ITUNES_LIMIT, SR, CLIP_SECONDS, QUERY_SECONDS, PEAKS_PER_FRAME, FANOUT, MATCH_VOTE_THRESHOLD
+
+Render deploy: Python 3.11.9; lightweight deps.
