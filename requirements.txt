@@ -6,8 +6,3 @@ python-multipart==0.0.9
 pydub==0.25.1
 imageio-ffmpeg==0.4.9
 requests==2.31.0
-numpy==1.26.4
-scipy==1.11.4
-librosa==0.10.1
-soundfile==0.12.1
-annoy==1.17.3

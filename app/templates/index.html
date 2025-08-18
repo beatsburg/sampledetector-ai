@@ -2,39 +2,95 @@
 <html lang="et">
 <head>
   <meta charset="utf-8">
-  <title>SampleDetector v2.0-alpha</title>
+  <title>SampleDetector ({{ version }})</title>
   <link rel="stylesheet" href="/static/style.css">
   <style>
     body{font-family:-apple-system,Arial,sans-serif;padding:2rem;background:#0b0b0c;color:#e5e7eb}
     a{color:#93c5fd}
-    .card{background:#121214;border:1px solid #222;border-radius:12px;padding:16px;margin-bottom:16px}
+    table{border-collapse:collapse;width:100%;margin-top:16px}
+    th,td{border:1px solid #222;padding:8px;text-align:left}
+    th{background:#18181b;color:#ddd}
+    .meta{color:#aaa;font-size:12px}
+    .ok{color:#22c55e}.warn{color:#f59e0b}.err{color:#ef4444}
     input,button{color:#111}
+    .card{background:#121214;border:1px solid #222;border-radius:12px;padding:16px;margin-bottom:16px}
   </style>
 </head>
 <body>
-  <h1>🔎 Sample Origin – v2.0 alpha</h1>
-  <div class="card">
-    <h3>1) Ehita referentsindeks (ZIP)</h3>
-    <form action="/index-samples" method="post" enctype="multipart/form-data" target="_blank">
-      <input type="file" name="zipfile_upload" accept=".zip" required>
-      <button type="submit">Laadi ZIP ja ehita indeks</button>
-    </form>
-    <p class="meta">ZIP: kuni {{ 200 }} faili; toetatud: mp3/wav/m4a/ogg/aiff/flac. Iga faili analüüs kuni 120 s.</p>
-  </div>
+  <h1>🎵 SampleDetector ({{ version }})</h1>
 
   <div class="card">
-    <h3>2) Analüüsi lugu</h3>
-    <form action="/sample-origin" method="post" enctype="multipart/form-data">
-      <input type="file" name="track" accept=".mp3,.wav,.m4a,.ogg,.aiff,.flac" required>
-      <label style="margin-left:12px;">Alusta (sek): <input type="number" name="start_seconds" value="0" min="0" step="0.5"></label>
+    <h3>Lae üles üks või mitu faili</h3>
+    <form id="form" action="/analyze" method="post" enctype="multipart/form-data">
+      <input id="files" type="file" name="files" accept=".mp3,.wav,.m4a,.aiff,.aif,.ogg" multiple required>
+      <label style="margin-left:12px;">Algus (sek): 
+        <input type="range" name="start_seconds" id="start_seconds" min="0" max="60" step="1" value="{{ start_seconds or 30 }}" oninput="ssv.innerText=this.value">
+        <b id="ssv">{{ start_seconds or 30 }}</b>s
+      </label>
+      <label style="margin-left:12px;">Lõigu pikkus (sek):
+        <input type="range" name="clip_seconds" id="clip_seconds" min="5" max="25" step="1" value="{{ clip_seconds or 15 }}" oninput="csvv.innerText=this.value">
+        <b id="csvv">{{ clip_seconds or 15 }}</b>s
+      </label>
       <button type="submit">Analüüsi</button>
     </form>
-    <p class="meta">Analüüsib kuni 120 s. Kompensatsioon: ±4 pooltooni, tempo ±10%.</p>
+    <p class="meta">Tulemustes näed kohe tabelit. Iga rea juures on link JSON-ile (/uploads/..._analysis.json).</p>
   </div>
 
-  <div class="card">
-    <h3>Indeksi staatus</h3>
-    <p><a href="/health" target="_blank">/health</a> · <a href="/index/meta" target="_blank">/index/meta</a> · <a href="/index/clear" target="_blank">/index/clear</a></p>
-  </div>
+  {% if batch %}
+    <h2>Tulemused ({{ results|length }}) · <span class="meta">⚡ koguaeg: {{ total_time }} s</span></h2>
+    {% if errors and errors|length %}
+      <p class="err">Vead:</p>
+      <ul>
+        {% for e in errors %}<li class="err">{{ e }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    <table>
+      <tr>
+        <th>Fail</th><th>Kestus</th><th>Valjus (dBFS)</th><th>Lugu</th><th>Artist</th><th>Timecode</th><th>Lingid</th><th>JSON</th>
+      </tr>
+      {% for r in results %}
+      <tr>
+        <td>{{ r.filename }} {% if r.cache_hit %}<span class="ok">(cache)</span>{% endif %}</td>
+        <td>{{ r.duration_sec }}</td>
+        <td>{{ r.loudness_dbfs }}</td>
+        <td>{{ (r.audd_summary.title if r.audd_summary else '') if r.audd_summary else '' }}</td>
+        <td>{{ (r.audd_summary.artist if r.audd_summary else '') if r.audd_summary else '' }}</td>
+        <td>{{ (r.audd_summary.timecode if r.audd_summary else '') if r.audd_summary else '' }}</td>
+        <td>
+          {% if r.spotify_url %}<a href="{{ r.spotify_url }}" target="_blank">Spotify</a>{% endif %}
+          {% if r.apple_url %} {% if r.spotify_url %}|{% endif %} <a href="{{ r.apple_url }}" target="_blank">Apple</a>{% endif %}
+        </td>
+        <td>{% if r.json_url %}<a href="{{ r.json_url }}" target="_blank">JSON</a>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+
+  <h3>📈 Viimased analüüsid</h3>
+  {% set recent = recent or [] %}
+  {% if recent|length > 0 %}
+  <table>
+    <tr>
+      <th>Aeg (UTC)</th><th>Fail</th><th>Lugu</th><th>Artist</th><th>Timecode</th><th>Spotify</th><th>Apple</th>
+    </tr>
+    {% for r in recent %}
+    <tr>
+      <td>{{ r.timestamp }}</td>
+      <td>{{ r.filename }}</td>
+      <td>{{ r.title }}</td>
+      <td>{{ r.artist }}</td>
+      <td>{{ r.timecode }}</td>
+      <td>{% if r.spotify_url %}<a href="{{ r.spotify_url }}" target="_blank">link</a>{% endif %}</td>
+      <td>{% if r.apple_url %}<a href="{{ r.apple_url }}" target="_blank">link</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p>Veel pole tulemusi.</p>
+  {% endif %}
+
+  <p class="meta" style="margin-top:24px;">
+    GDPR: faile hoitakse ajutiselt töötlemise ajaks. CSV/Cache on admini all (x-admin-token).
+  </p>
 </body>
 </html>
