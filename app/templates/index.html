@@ -27,7 +27,7 @@
       <input type="number" name="per_query" value="20" min="1" max="50">
       <button type="submit">Laadi preview'd ja indeksi</button>
     </form>
-    <p>Kasutame iTunes Search API-d (30s preview). Hetkekataloog: <b>{{ meta.count if meta else 0 }}</b> lugu.</p>
+    <p>Kasutame iTunes Search API-d (30s preview). Kontroll: <a href="/health" target="_blank">/health</a> · <a href="/diag" target="_blank">/diag</a></p>
   </div>
 
   <div class="card">
@@ -39,25 +39,6 @@
     <p>Analüüsib kuni 90 s sinu loost ja võrdleb kataloogiga. Tulemus: kahtlusalused vasteid (votes).</p>
   </div>
 
-  <div class="card">
-    <h3>Kataloogi viimased</h3>
-    {% if recent and recent|length %}
-      <table>
-        <tr><th>Cover</th><th>Lugu</th><th>Artist</th><th>Link</th></tr>
-        {% for tid, r in meta.tracks.items()|list()[-10:] %}
-        <tr>
-          <td>{% if r.artworkUrl100 %}<img src="{{ r.artworkUrl100 }}" width="60">{% endif %}</td>
-          <td>{{ r.trackName }}</td>
-          <td>{{ r.artistName }}</td>
-          <td>{% if r.trackViewUrl %}<a href="{{ r.trackViewUrl }}" target="_blank">iTunes</a>{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </table>
-    {% else %}
-      <p>Veel pole laetud. Tee samm 1.</p>
-    {% endif %}
-  </div>
-
-  <p style="color:#9ca3af">NB: see on alfa. “Votes” ≥ lävi viitab suure tõenäosusega sämpli kasutusele. Läve saab muuta env `MATCH_VOTE_THRESHOLD`-iga.</p>
+  <p style="color:#9ca3af">NB: läve `MATCH_VOTE_THRESHOLD` saad muuta Environmentis. Kui /health näitab ffmpeg=not set, proovi uuesti — imageio-ffmpeg tõmbab binaari esimesel helitöötlusel, või sea `FFMPEG_BINARY` absoluutne tee.</p>
 </body>
 </html>
